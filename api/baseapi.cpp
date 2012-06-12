@@ -17,6 +17,8 @@
  *
  **********************************************************************/
 
+#include <vector>
+
 // Include automatically generated configuration file if running autoconf.
 #ifdef HAVE_CONFIG_H
 #include "config_auto.h"
@@ -27,6 +29,7 @@
 #ifdef USING_GETTEXT
 #include <libintl.h>
 #include <locale.h>
+#include <iostream>
 #define _(x) gettext(x)
 #else
 #define _(x) (x)
@@ -990,7 +993,6 @@ static void AddBoxTohOCR(const PageIterator *it,
   hocr_str->add_str_int(" ", top);
   hocr_str->add_str_int(" ", right);
   hocr_str->add_str_int(" ", bottom);
-  *hocr_str += "\">";
 }
 
 /**
@@ -1036,6 +1038,7 @@ char* TessBaseAPI::GetHOCRText(int page_number) {
       hocr_str.add_str_int("   <div class='ocr_carea' id='block_", bcnt);
       hocr_str.add_str_int("_", bcnt);
       AddBoxTohOCR(res_it, RIL_BLOCK, &hocr_str);
+      hocr_str += "\">";
     }
     if (res_it->IsAtBeginningOf(RIL_PARA)) {
       if (res_it->ParagraphIsLtr()) {
@@ -1044,15 +1047,19 @@ char* TessBaseAPI::GetHOCRText(int page_number) {
         hocr_str.add_str_int("\n    <p class='ocr_par' dir='rtl' id='par_", pcnt);
       }
       AddBoxTohOCR(res_it, RIL_PARA, &hocr_str);
+      hocr_str += "\">";
     }
     if (res_it->IsAtBeginningOf(RIL_TEXTLINE)) {
       hocr_str.add_str_int("\n     <span class='ocr_line' id='line_", lcnt);
       AddBoxTohOCR(res_it, RIL_TEXTLINE, &hocr_str);
+      hocr_str += "\">";
     }
 
     // Now, process the word...
     hocr_str.add_str_int("<span class='ocrx_word' id='word_", wcnt);
+    
     AddBoxTohOCR(res_it, RIL_WORD, &hocr_str);
+
     const char *font_name;
     bool bold, italic, underlined, monospace, serif, smallcaps;
     int pointsize, font_id;
@@ -1062,27 +1069,51 @@ char* TessBaseAPI::GetHOCRText(int page_number) {
     bool last_word_in_line = res_it->IsAtFinalElement(RIL_TEXTLINE, RIL_WORD);
     bool last_word_in_para = res_it->IsAtFinalElement(RIL_PARA, RIL_WORD);
     bool last_word_in_block = res_it->IsAtFinalElement(RIL_BLOCK, RIL_WORD);
-    if (bold) hocr_str += "<strong>";
-    if (italic) hocr_str += "<em>";
+
+    std::vector<int> cuts;
+
+    int pleft, ptop, pright, pbottom;
+    res_it->BoundingBox(RIL_WORD, &pleft, &ptop, &pright, &pbottom);
+    int last_cut = pleft;
+
+    STRING hocr_cuts("");
+    STRING hocr_chars("");
     do {
       const char *grapheme = res_it->GetUTF8Text(RIL_SYMBOL);
+      int left, top, right, bottom;
+      res_it->BoundingBox(RIL_SYMBOL, &left, &top, &right, &bottom);
+      cuts.push_back(right - last_cut);
+      last_cut = left;
+      STRING hocr_char("");
+
       if (grapheme && grapheme[0] != 0) {
         if (grapheme[1] == 0) {
           switch (grapheme[0]) {
-            case '<': hocr_str += "&lt;"; break;
-            case '>': hocr_str += "&gt;"; break;
-            case '&': hocr_str += "&amp;"; break;
-            case '"': hocr_str += "&quot;"; break;
-            case '\'': hocr_str += "&#39;"; break;
-            default: hocr_str += grapheme;
+            case '<': hocr_char += "&lt;"; break;
+            case '>': hocr_char += "&gt;"; break;
+            case '&': hocr_char += "&amp;"; break;
+            case '"': hocr_char += "&quot;"; break;
+            case '\'': hocr_char += "&#39;"; break;
+            default: hocr_char += grapheme;
           }
         } else {
-          hocr_str += grapheme;
+          hocr_char += grapheme;
         }
+        hocr_chars += hocr_char;
       }
       delete []grapheme;
       res_it->Next(RIL_SYMBOL);
     } while (!res_it->Empty(RIL_BLOCK) && !res_it->IsAtBeginningOf(RIL_WORD));
+
+    hocr_str += "; cuts";
+    for (int ii = 0; ii < cuts.size() - 1; ii++) {
+      hocr_str.add_str_int(" ", cuts[ii]);
+    }
+    hocr_str += "\">";
+
+    if (bold) hocr_str += "<strong>";
+    if (italic) hocr_str += "<em>";
+    hocr_str += hocr_chars;
     if (italic) hocr_str += "</em>";
     if (bold) hocr_str += "</strong>";
     hocr_str += "</span> ";
