@@ -29,7 +29,6 @@
 #ifdef USING_GETTEXT
 #include <libintl.h>
 #include <locale.h>
-#include <iostream>
 #define _(x) gettext(x)
 #else
 #define _(x) (x)
