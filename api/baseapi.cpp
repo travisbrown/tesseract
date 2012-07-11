@@ -1082,7 +1082,7 @@ char* TessBaseAPI::GetHOCRText(int page_number) {
       int left, top, right, bottom;
       res_it->BoundingBox(RIL_SYMBOL, &left, &top, &right, &bottom);
       cuts.push_back(right - last_cut);
-      last_cut = left;
+      last_cut = right;
       STRING hocr_char("");
 
       if (grapheme && grapheme[0] != 0) {
