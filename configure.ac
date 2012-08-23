@@ -65,14 +65,11 @@ case $host_os in
     mingw32*)
         AC_DEFINE_UNQUOTED(MINGW,1,[This is a MinGW system])
         AM_CONDITIONAL(MINGW, true)
-        #AC_SUBST([AM_CPPFLAGS], ["-DWINDLLNAME=\"lib$GENERIC_LIBRARY_NAME\""])
-        #AC_SUBST([AM_CPPFLAGS], ["-D__BLOB_T_DEFINED -DWINDLLNAME=\"lib$GENERIC_LIBRARY_NAME\""])
         AC_SUBST([AM_CPPFLAGS], ["-D__BLOB_T_DEFINED"])
         AC_SUBST([AM_LDFLAGS], ['-Wl,-no-undefined -Wl,--as-needed'])
-        #AM_LDFLAGS='-Wl,-no-undefined -Wl,--as-needed'
         ;;
      *)
-		# default
+        # default
         ;;
 esac
 
@@ -143,11 +140,27 @@ AM_CONDITIONAL([USING_MULTIPLELIBS], [test "$enable_mlibs" = "yes"])
 # Check if tessdata-prefix is disabled
 AC_MSG_CHECKING(whether to use tessdata-prefix)
 AC_ARG_ENABLE(tessdata-prefix,
-	[AC_HELP_STRING([--disable-tessdata-prefix],
-			[dont set TESSDATA-PREFIX during compile])],
-	[tessdata_prefix="no"], [tessdata_prefix="yes"])
+    [AC_HELP_STRING([--disable-tessdata-prefix],
+            [dont set TESSDATA-PREFIX during compile])],
+    [tessdata_prefix="no"], [tessdata_prefix="yes"])
 AC_MSG_RESULT($tessdata_prefix)
 AM_CONDITIONAL([NO_TESSDATA_PREFIX], [test "$tessdata_prefix" = "no"])
+
+# Check whether enable debuging
+AC_MSG_CHECKING(whether to enable debugging)
+AC_ARG_ENABLE([debug],
+    [AC_HELP_STRING([--enable-debug],
+        [turn on debugging (default=no)])],
+    [debug=$enableval],
+    [debug="no"])
+AC_MSG_RESULT($debug)
+if test x"$debug" = x"yes"; then
+    AM_CXXFLAGS="$AM_CXXFLAGS -g -Wall -Wno-uninitialized -O0 -DDEBUG"
+    AM_CPPFLAGS="$AM_CPPFLAGS -g -Wall -Wno-uninitialized -O0 -DDEBUG"
+else
+    AM_CXXFLAGS="$AM_CXXFLAGS -O3 -DNDEBUG"
+    AM_CPPFLAGS="$AM_CPPFLAGS -O3 -DNDEBUG"
+fi
 
 #localedir='${prefix}/share/locale'
 
@@ -415,7 +428,7 @@ fi
 # AC_DEFINE_UNQUOTED(TESSERACT_VERSION,["${PACKAGE_VERSION}"],[version string])
 
 # Output files
-AC_CONFIG_FILES(Makefile)
+AC_CONFIG_FILES([Makefile tesseract.pc])
 #if test "$enable_gettext" = "yes"; then
 #AC_CONFIG_FILES(po/Makefile.in)
 #fi
